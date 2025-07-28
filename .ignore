@@ -1,6 +1,7 @@
 CMakeCache.txt
 CMakeFiles/
 bin/
+extern/
 Makefile
 cmake_install.cmake
 .cache/
@@ -21,3 +22,4 @@ x64/
 .ninja_deps
 .ninja_log
 build.ninja
+
