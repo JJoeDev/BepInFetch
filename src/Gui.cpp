@@ -1,10 +1,10 @@
 #include "Gui.hpp"
+#include "Theme.hpp"
 
 #include "GLFW/glfw3.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include <iostream>
 
 Gui::Gui(GLFWwindow* window, const char* glslVersion) : m_window(window) {
     IMGUI_CHECKVERSION();
@@ -13,7 +13,7 @@ Gui::Gui(GLFWwindow* window, const char* glslVersion) : m_window(window) {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    ImGui::StyleColorsDark();
+    SetupImGuiStyle();
 
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init(glslVersion);
