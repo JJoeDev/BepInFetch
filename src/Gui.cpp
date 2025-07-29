@@ -6,6 +6,9 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include "imgui_stdlib.h"
+#include <cfloat>
+
 Gui::Gui(GLFWwindow* window, const char* glslVersion) : m_window(window) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -49,6 +52,14 @@ void Gui::Render() {
         ImGui::EndMenuBar();
     }
 
+    float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+    float buttonWidth = ImGui::CalcTextSize("Track").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    float inputWidth = ImGui::GetContentRegionAvail().x - buttonWidth - spacing;
+
+    ImGui::SetNextItemWidth(inputWidth);
+    ImGui::InputTextWithHint("##UrlTrackInput", "Enter GitHub URL to track", &m_enteredUrl);
+    ImGui::SameLine(); ImGui::Button("Track");
+
     if(m_showAbout) { // A modal popup cannot open in a menu item. This is a workaround
         m_showAbout = false;
         ImGui::OpenPopup("About");
@@ -57,7 +68,7 @@ void Gui::Render() {
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, {0.5f, 0.5f});
     if(ImGui::BeginPopupModal("About", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Name: BepFetch");
+        ImGui::Text("Name: BepInFetch");
         ImGui::Text("Version: 0.0.1");
         ImGui::Text("Copyright 2025 JJoeDev");
         ImGui::Separator();

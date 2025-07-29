@@ -34,6 +34,7 @@ set(IMGUI_SRC
   ${IMGUI_DIR}/imgui_widgets.cpp
   ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
   ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+  ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SRC} ${IMGUI_SRC})
@@ -67,6 +68,7 @@ endif()
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${IMGUI_DIR}
   ${IMGUI_DIR}/backends
+  ${IMGUI_DIR}/misc/cpp
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

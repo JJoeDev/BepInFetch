@@ -4,7 +4,7 @@ int main() {
     AppSpecs specs {
         .width = 1280,
         .height = 720,
-        .title = "BepFetch",
+        .title = "BepInFetch",
     };
 
     Application app(specs);
