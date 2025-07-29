@@ -14,5 +14,6 @@ private:
 
     int m_rootWinFlags{};
 
+    bool m_showAbout{false};
     bool m_showDemoWindow{false};
 };
