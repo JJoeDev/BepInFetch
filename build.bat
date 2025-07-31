@@ -22,4 +22,4 @@ if errorlevel 1 (
 	exit /b 1
 )
 
-.\bin\BepFetch.exe
+.\bin\BepInFetch.exe

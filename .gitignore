@@ -3,6 +3,8 @@ CMakeFiles/
 bin/
 Makefile
 cmake_install.cmake
+CPackConfig.cmake
+CPackSourceConfig.cmake
 .cache/
 imgui.ini
 

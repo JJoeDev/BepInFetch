@@ -7,9 +7,10 @@
 #include "imgui_impl_opengl3.h"
 
 #include "imgui_stdlib.h"
-#include <cfloat>
+#include <algorithm>
+#include <string>
 
-Gui::Gui(GLFWwindow* window, const char* glslVersion) : m_window(window) {
+Gui::Gui(GLFWwindow* window, const char* glslVersion, ModManager* manager) : m_window(window), m_modManager(manager) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -42,9 +43,10 @@ void Gui::Render() {
             if(ImGui::MenuItem("Quit")) { glfwSetWindowShouldClose(m_window, GLFW_TRUE); }
             ImGui::Separator();
 #ifndef NDEBUG
-            if(ImGui::MenuItem("Toggle Demo Window")) { m_showDemoWindow = !m_showDemoWindow; }
+            ImGui::MenuItem("Toggle Demo Window", nullptr, &m_showDemoWindow);
 #endif            
-            if(ImGui::MenuItem("About")) { m_showAbout = true; }
+            ImGui::MenuItem("About", nullptr, &m_showAbout);
+            ImGui::MenuItem("Debug Overlay", nullptr, &m_debugOverlay);
 
             ImGui::EndMenu();
         }
@@ -57,8 +59,52 @@ void Gui::Render() {
     float inputWidth = ImGui::GetContentRegionAvail().x - buttonWidth - spacing;
 
     ImGui::SetNextItemWidth(inputWidth);
-    ImGui::InputTextWithHint("##UrlTrackInput", "Enter GitHub URL to track", &m_enteredUrl);
-    ImGui::SameLine(); ImGui::Button("Track");
+    bool isEnter = ImGui::InputTextWithHint("##UrlTrackInput", "Enter GitHub URL to track", &m_enteredUrl, ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::SameLine();
+    if(ImGui::Button("Track") || isEnter) {
+        if(!m_enteredUrl.empty()) {
+            m_trackedMods.push_back(m_enteredUrl);
+            m_enteredUrl = "";
+        }
+    }
+
+    static int selected = 0;
+    { // Left side
+        ImGui::BeginGroup();
+        ImGui::BeginChild("Mod List", {350, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+
+        if(m_trackedMods.size() > 0) {
+            for(size_t i = 0; i < m_trackedMods.size(); ++i) {
+                if(ImGui::Selectable(m_trackedMods[i].c_str(), selected == static_cast<int>(i))) {
+                    selected = static_cast<int>(i);
+                }
+            }
+        }
+
+        ImGui::EndChild();
+        if(m_trackedMods.size() > 0) {
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.686274509804f, 0.188235294118f, 0.160784313725f, 1.0f}); // Flexoki red 600
+            if(ImGui::Button("Remove Selected")) {
+                m_trackedMods.erase(std::find(m_trackedMods.begin(), m_trackedMods.end(), m_trackedMods[static_cast<size_t>(selected)]));
+            }
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::EndGroup();
+    }
+    ImGui::SameLine();
+    { // Right side
+        ImGui::BeginGroup();
+        ImGui::BeginChild("Mod View", {0, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders);
+
+        if(ImGui::Button("Test Libs")) {
+            m_modManager->TestLibs();
+        }
+
+        ImGui::EndChild();
+        ImGui::Button("Demo button");
+        ImGui::EndGroup();
+    }
 
     if(m_showAbout) { // A modal popup cannot open in a menu item. This is a workaround
         m_showAbout = false;
@@ -83,6 +129,19 @@ void Gui::Render() {
         }
 
         ImGui::EndPopup();
+    }
+
+    if(m_debugOverlay) {
+        ImGui::SetNextWindowBgAlpha(0.55f);
+
+        ImGui::Begin("DebugOverlay", &m_debugOverlay, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+        ImGui::Text("DEBUG OVERLAY");
+        ImGui::Separator();
+
+        ImGui::Text("FPS: %3.2f", ImGui::GetIO().Framerate);
+
+        ImGui::End();
     }
 
 #ifndef NDEBUG

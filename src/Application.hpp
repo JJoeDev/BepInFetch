@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Gui.hpp"
+#include "ModManager.hpp"
 
 #include <GLFW/glfw3.h>
 #include <memory>
@@ -23,6 +24,7 @@ private:
     GLFWwindow* m_window{nullptr};
 
     std::unique_ptr<Gui> m_gui{nullptr};
+    ModManager m_modManager{};
 
     const char* m_GLSL_VERSION{"#version 440"};
 };

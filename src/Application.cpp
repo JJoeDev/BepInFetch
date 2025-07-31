@@ -19,7 +19,7 @@ Application::Application(const AppSpecs& specs) {
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1);
 
-    m_gui = std::make_unique<Gui>(m_window, m_GLSL_VERSION);
+    m_gui = std::make_unique<Gui>(m_window, m_GLSL_VERSION, &m_modManager);
 }
 
 Application::~Application() {
