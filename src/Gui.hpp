@@ -3,8 +3,8 @@
 #include "ModManager.hpp"
 
 #include <GLFW/glfw3.h>
+#include <future>
 #include <string>
-#include <vector>
 
 class Gui {
 public:
@@ -21,9 +21,15 @@ private:
 
     std::string m_enteredUrl{};
 
-    std::vector<std::string> m_trackedMods{};
+    std::unordered_map<int, modData> m_retrievedData{};
+    std::unordered_map<int, std::future<modData>> m_futures{};
+    bool m_retrivingData{false};
 
+    // File Menu Items
     bool m_showAbout{false};
     bool m_debugOverlay{false};
     bool m_showDemoWindow{false};
+
+    // Help Menu Items
+    bool m_showHelp{false};
 };

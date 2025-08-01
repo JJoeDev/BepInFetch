@@ -8,6 +8,8 @@
 
 #include "imgui_stdlib.h"
 #include <algorithm>
+#include <filesystem>
+#include <future>
 #include <string>
 
 Gui::Gui(GLFWwindow* window, const char* glslVersion, ModManager* manager) : m_window(window), m_modManager(manager) {
@@ -24,6 +26,16 @@ Gui::Gui(GLFWwindow* window, const char* glslVersion, ModManager* manager) : m_w
 
     m_rootWinFlags  = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar;
     m_rootWinFlags |= ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+    m_modManager->SetOnDataRetrieving([this]() {
+        std::cout << "OnDataRetrieving!\n";
+        m_retrivingData = true;
+    });
+
+    m_modManager->SetOnDataRetrieved([this]() {
+        std::cout << "OnDataRetrieved!\n";
+        m_retrivingData = false;
+    });
 }
 
 Gui::~Gui() {
@@ -33,20 +45,37 @@ Gui::~Gui() {
 }
 
 void Gui::Render() {
-    ImGui::SetNextWindowPos({0, 0});
+    for(auto it = m_futures.begin(); it != m_futures.end(); ) {
+        auto& future = it->second;
+
+        if(future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            m_retrievedData[it->first] = future.get();
+            it = m_futures.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    ImGui::SetNextWindowPos({0, 0}); 
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
     ImGui::Begin("root", nullptr, m_rootWinFlags);
 
     if(ImGui::BeginMenuBar()) {
         if(ImGui::BeginMenu("File")) {
-            if(ImGui::MenuItem("Quit")) { glfwSetWindowShouldClose(m_window, GLFW_TRUE); }
+            if(ImGui::MenuItem("Quit", "Ctrl+Q")) { glfwSetWindowShouldClose(m_window, GLFW_TRUE); }
             ImGui::Separator();
 #ifndef NDEBUG
             ImGui::MenuItem("Toggle Demo Window", nullptr, &m_showDemoWindow);
 #endif            
             ImGui::MenuItem("About", nullptr, &m_showAbout);
             ImGui::MenuItem("Debug Overlay", nullptr, &m_debugOverlay);
+
+            ImGui::EndMenu();
+        }
+        if(ImGui::BeginMenu("Help")) {
+            ImGui::MenuItem("How to use", nullptr, &m_showHelp);
 
             ImGui::EndMenu();
         }
@@ -63,7 +92,7 @@ void Gui::Render() {
     ImGui::SameLine();
     if(ImGui::Button("Track") || isEnter) {
         if(!m_enteredUrl.empty()) {
-            m_trackedMods.push_back(m_enteredUrl);
+            m_modManager->m_trackedMods.push_back(m_enteredUrl);
             m_enteredUrl = "";
         }
     }
@@ -73,19 +102,20 @@ void Gui::Render() {
         ImGui::BeginGroup();
         ImGui::BeginChild("Mod List", {350, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
 
-        if(m_trackedMods.size() > 0) {
-            for(size_t i = 0; i < m_trackedMods.size(); ++i) {
-                if(ImGui::Selectable(m_trackedMods[i].c_str(), selected == static_cast<int>(i))) {
+        if(m_modManager->m_trackedMods.size() > 0) {
+            for(size_t i = 0; i < m_modManager->m_trackedMods.size(); ++i) {
+                if(ImGui::Selectable(m_modManager->m_trackedMods[i].c_str(), selected == static_cast<int>(i))) {
                     selected = static_cast<int>(i);
                 }
             }
         }
 
         ImGui::EndChild();
-        if(m_trackedMods.size() > 0) {
+        if(m_modManager->m_trackedMods.size() > 0) {
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.686274509804f, 0.188235294118f, 0.160784313725f, 1.0f}); // Flexoki red 600
             if(ImGui::Button("Remove Selected")) {
-                m_trackedMods.erase(std::find(m_trackedMods.begin(), m_trackedMods.end(), m_trackedMods[static_cast<size_t>(selected)]));
+                auto& mods = m_modManager->m_trackedMods;
+                mods.erase(std::find(mods.begin(), mods.end(), mods[static_cast<size_t>(selected)]));
             }
             ImGui::PopStyleColor();
         }
@@ -97,8 +127,27 @@ void Gui::Render() {
         ImGui::BeginGroup();
         ImGui::BeginChild("Mod View", {0, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders);
 
-        if(ImGui::Button("Test Libs")) {
-            m_modManager->TestLibs();
+        if(m_modManager->m_trackedMods.size() > 0) {
+            int sel = selected;
+            if(ImGui::Button("Retrieve release data")) {
+                m_futures[sel] = std::async(std::launch::async, [this, sel]() {
+                    return m_modManager->GetReleaseData(m_modManager->m_trackedMods[sel]);
+                });
+            }
+
+            if(m_retrivingData) {
+                ImGui::ProgressBar(-1.0f * static_cast<float>(ImGui::GetTime()), {-FLT_MIN, 0}, "Retriving Data");
+            }
+
+            ImGui::Text("Mod Author: %s", m_retrievedData[selected].uploader.c_str());
+            ImGui::Text("Mod Name: %s", m_retrievedData[selected].modName.c_str());
+            ImGui::Text("Download URL: %s", m_retrievedData[selected].downloadUrl.c_str());
+
+            const std::string btnStr{"Download " + m_retrievedData[selected].modName};
+            if(ImGui::Button(btnStr.c_str())) {
+                // m_modManager->Download(m_retrievedData[selected].downloadUrl, fs::current_path());
+                std::future<void> fut = std::async(std::launch::async, &ModManager::Download, m_modManager, m_retrievedData[selected].downloadUrl, fs::current_path() / m_retrievedData[selected].modName);
+            }
         }
 
         ImGui::EndChild();

@@ -6,14 +6,41 @@
 
 #include <string>
 #include <vector>
+#include <functional>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+struct modData {
+    std::string uploader;
+    std::string modName;
+    std::string downloadUrl;
+};
 
 class ModManager {
 public:
-    ModManager() = default;
+    ModManager();
     ~ModManager() = default;
 
-    void TestLibs();
+    inline void SetOnDataRetrieving(std::function<void()> onDataRetrieving) {
+        m_OnDataRetrieving = onDataRetrieving;
+    }
+
+    inline void SetOnDataRetrieved(std::function<void()> onDataRetrieved) {
+        m_OnDataRetrieved = onDataRetrieved;
+    }
+
+    [[nodiscard]]
+    modData GetReleaseData(const std::string& repo) const;
+
+    void Download(const std::string& file, fs::path destination);
+
+    std::vector<std::string> m_trackedMods{};
 
 private:
-    std::vector<std::string> m_trackedMods{};
+    httplib::Headers m_headers{};
+    const char* m_host = "api.github.com";
+
+    std::function<void()> m_OnDataRetrieving;
+    std::function<void()> m_OnDataRetrieved;
 };
