@@ -1,4 +1,5 @@
 #include "Gui.hpp"
+#include "ModManager.hpp"
 #include "Theme.hpp"
 
 #include "GLFW/glfw3.h"
@@ -8,6 +9,7 @@
 
 #include "imgui_stdlib.h"
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <future>
 #include <string>
@@ -45,6 +47,10 @@ Gui::~Gui() {
 }
 
 void Gui::Render() {
+    if(m_downloadFuture.valid() && m_downloadFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        m_downloadFuture.get();
+    }
+
     for(auto it = m_futures.begin(); it != m_futures.end(); ) {
         auto& future = it->second;
 
@@ -128,30 +134,28 @@ void Gui::Render() {
         ImGui::BeginChild("Mod View", {0, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders);
 
         if(m_modManager->m_trackedMods.size() > 0) {
+            const auto& data = m_retrievedData[selected];
             int sel = selected;
             if(ImGui::Button("Retrieve release data")) {
                 m_futures[sel] = std::async(std::launch::async, [this, sel]() {
-                    return m_modManager->GetReleaseData(m_modManager->m_trackedMods[sel]);
+                    return m_modManager->GetReleaseData(m_modManager->m_trackedMods[static_cast<size_t>(sel)]);
                 });
             }
 
-            if(m_retrivingData) {
-                ImGui::ProgressBar(-1.0f * static_cast<float>(ImGui::GetTime()), {-FLT_MIN, 0}, "Retriving Data");
-            }
+            ImGui::Text("Mod Author: %s", data.uploader.c_str());
+            ImGui::Text("Mod Name: %s", data.modName.c_str());
+            ImGui::Text("Download URL: %s", data.downloadUrl.c_str());
 
-            ImGui::Text("Mod Author: %s", m_retrievedData[selected].uploader.c_str());
-            ImGui::Text("Mod Name: %s", m_retrievedData[selected].modName.c_str());
-            ImGui::Text("Download URL: %s", m_retrievedData[selected].downloadUrl.c_str());
-
-            const std::string btnStr{"Download " + m_retrievedData[selected].modName};
+            const std::string btnStr{"Download " + data.modName};
             if(ImGui::Button(btnStr.c_str())) {
-                // m_modManager->Download(m_retrievedData[selected].downloadUrl, fs::current_path());
-                std::future<void> fut = std::async(std::launch::async, &ModManager::Download, m_modManager, m_retrievedData[selected].downloadUrl, fs::current_path() / m_retrievedData[selected].modName);
+                m_downloadFuture = std::async(std::launch::async, &ModManager::Download, m_modManager, data.downloadUrl, fs::current_path() / data.modName);
             }
         }
 
         ImGui::EndChild();
-        ImGui::Button("Demo button");
+        if(m_retrivingData) {
+            ImGui::ProgressBar(-1.0f * static_cast<float>(ImGui::GetTime()), {-FLT_MIN, 0}, "Retriving Data");
+        }
         ImGui::EndGroup();
     }
 

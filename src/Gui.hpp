@@ -23,6 +23,7 @@ private:
 
     std::unordered_map<int, modData> m_retrievedData{};
     std::unordered_map<int, std::future<modData>> m_futures{};
+    std::future<void> m_downloadFuture{};
     bool m_retrivingData{false};
 
     // File Menu Items
