@@ -1,4 +1,5 @@
 #include "Application.hpp"
+#include "StaticInterface.hpp"
 
 #include <GLFW/glfw3.h>
 #include <gl/gl.h>
@@ -20,6 +21,8 @@ Application::Application(const AppSpecs& specs) {
     glfwSwapInterval(1);
 
     m_gui = std::make_unique<Gui>(m_window, m_GLSL_VERSION, &m_modManager);
+
+    GlobalInstance<Application>::instance = this;
 }
 
 Application::~Application() {
@@ -30,6 +33,8 @@ Application::~Application() {
 }
 
 void Application::Run() {
+    m_gui->PostInit();
+
     while(!glfwWindowShouldClose(m_window)) {
         glfwPollEvents();
 

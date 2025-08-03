@@ -20,11 +20,17 @@ public:
 
     void Run();
 
+    [[nodiscard]]
+    const inline fs::path& GetDownloadPath() const { return m_downloadDest; }
+    inline void SetDownloadPath(const fs::path& path) { m_downloadDest = path; }
+
 private:
     GLFWwindow* m_window{nullptr};
 
     std::unique_ptr<Gui> m_gui{nullptr};
     ModManager m_modManager{};
+
+    fs::path m_downloadDest{"C:\\dev"};
 
     const char* m_GLSL_VERSION{"#version 440"};
 };

@@ -6,12 +6,6 @@ if(APPLE)
 endif()
 
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui)
-
-set(OPENSSL_ROOT_DIR "C:/Program Files/OpenSSL-Win64")
-set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/VC/x64/MD")
-set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
-# set(OPENSSL_LIBRARIES "${OPENSSL_LIB_DIR}/libcrypto.lib; ${OPENSSL_LIB_DIR}/libssl.lib") # Try to help find_package
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
@@ -42,7 +36,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cpp_httplib)
 
-# find_package(OpenSSL REQUIRED) # Tried using it, cannot get it to work
+find_package(OpenSSL REQUIRED)
 find_package(OpenGL REQUIRED)
 
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS src/*.cpp)
@@ -77,8 +71,8 @@ if(WIN32)
     glfw
     OpenGL::GL
     opengl32
-    ${OPENSSL_LIB_DIR}/libssl.lib
-    ${OPENSSL_LIB_DIR}/libcrypto.lib
+    OpenSSL::SSL
+    OpenSSL::Crypto
   )
 else()
   target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -93,6 +87,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${IMGUI_DIR}
   ${IMGUI_DIR}/backends
   ${IMGUI_DIR}/misc/cpp
+
+  ${CMAKE_BINARY_DIR}/extern/imgui-filebrowser
 
   ${OPENSSL_INCLUDE_DIR}
   ${nlohmann_json_SOURCE_DIR}/include

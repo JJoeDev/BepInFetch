@@ -2,3 +2,6 @@
 	path = extern/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "extern/imgui-filebrowser"]
+	path = extern/imgui-filebrowser
+	url = https://github.com/AirGuanZ/imgui-filebrowser

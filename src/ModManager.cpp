@@ -10,33 +10,40 @@ ModManager::ModManager() {
 }
 
 /// This function does not expect to recieve https://github.com/ only /username/reponame
-modData ModManager::GetReleaseData(const std::string& repo) const {
+ModData ModManager::GetReleaseData(const std::string& repo) const {
     m_OnDataRetrieving();
 
     httplib::SSLClient cli(m_host);
 
-    modData assets{};
+    ModData modData{};
 
     auto res = cli.Get("/repos/" + repo + "/releases/latest", m_headers);
     if(res && res->status == 200) {
         auto json = nlohmann::json::parse(res->body);
 
+        modData.modName = json["name"].get<std::string>();
+        modData.tagName = json["tag_name"].get<std::string>();
+        modData.publishTime = json["published_at"].get<std::string>();
+
         if(json.contains("assets")) {
             for(const auto& asset : json["assets"]) {
-                assets = {
+                Asset a {
                     .uploader = asset["uploader"]["login"].get<std::string>(),
-                    .modName = asset["name"].get<std::string>(),
+                    .assetName= asset["name"].get<std::string>(),
                     .downloadUrl = asset["browser_download_url"].get<std::string>(),
                 };
+
+                modData.assets.push_back(a);
             }
         }
         else {
             std::cerr << "Request failed: " << (res ? res->status : -1) << std::endl;
         }
+
     }
 
     m_OnDataRetrieved();
-    return assets;
+    return modData;
 }
 
 struct UrlParts {
@@ -45,31 +52,26 @@ struct UrlParts {
 };
  
 UrlParts ParseURL(const std::string& url) {
-    std::cout << "BEGIN URL PARSE: " << url << '\n';
     std::regex urlRegex(R"(https?://([^/]+)(/.*))");
     std::smatch match;
-    std::cout << "CHECK REGEX MATCH\n";
     if(std::regex_match(url, match, urlRegex)) {
         std::cout << "REGEX MATCHES\n";
         return {match[1], match[2]};
     }
 
-    std::cout << "REGEX MATCH ERROR\n";
+    std::cerr << "REGEX MATCH ERROR\n";
 
     throw std::invalid_argument("Invalid URL: " + url);
 }
 
 void ModManager::Download(const std::string& url, fs::path destination) {
     m_OnDataRetrieving();
-    std::cout << "DOWNLOAD START\n";
 
     std::string currentUrl = url;
     int maxRedirects = 5;
 
     while(maxRedirects-- > 0) {
         auto [host, path] = ParseURL(currentUrl);
-
-        std::cout << "URL PARSED :: HOST: " << host << " PATH: " << path << '\n';
 
         httplib::SSLClient cli(host);
         cli.set_follow_location(false);
@@ -80,7 +82,6 @@ void ModManager::Download(const std::string& url, fs::path destination) {
             m_OnDataRetrieved();
             return;
         }
-        std::cout << "OUT FILE STREAM CREATED\n";
 
         auto res = cli.Get(path, m_headers, [&](const char* data, std::streamsize dataLen) {
             ofs.write(data, dataLen);

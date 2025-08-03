@@ -1,11 +1,14 @@
 #include "Gui.hpp"
+#include "Application.hpp"
 #include "ModManager.hpp"
+#include "StaticInterface.hpp"
 #include "Theme.hpp"
 
 #include "GLFW/glfw3.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "imfilebrowser.h"
 
 #include "imgui_stdlib.h"
 #include <algorithm>
@@ -38,12 +41,23 @@ Gui::Gui(GLFWwindow* window, const char* glslVersion, ModManager* manager) : m_w
         std::cout << "OnDataRetrieved!\n";
         m_retrivingData = false;
     });
+
+    m_fileBrowser.SetTitle("Select file destination");
 }
 
 Gui::~Gui() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+}
+
+void Gui::PostInit() {
+    if(const auto path = GlobalInstance<Application>::instance->GetDownloadPath(); path.empty()) {
+        m_downloadDest = fs::current_path();
+    }
+    else {
+        m_downloadDest = path;
+    }
 }
 
 void Gui::Render() {
@@ -103,6 +117,19 @@ void Gui::Render() {
         }
     }
 
+    if(ImGui::Button("Change")) {
+        m_fileBrowser.Open();
+    }
+    ImGui::SameLine();
+    ImGui::Text("Mod Download Destination: %ls", m_downloadDest.c_str());
+
+    m_fileBrowser.Display();
+
+    if(m_fileBrowser.HasSelected()) {
+        m_downloadDest = m_fileBrowser.GetSelected();
+        m_fileBrowser.ClearSelected();
+    }
+
     static int selected = 0;
     { // Left side
         ImGui::BeginGroup();
@@ -135,21 +162,46 @@ void Gui::Render() {
 
         if(m_modManager->m_trackedMods.size() > 0) {
             const auto& data = m_retrievedData[selected];
+
+            ImGui::Text("Mod Name: %s", data.modName.c_str());
+            ImGui::Text("Tag: %s", data.tagName.c_str());
+            ImGui::Text("Published at: %s", data.publishTime.c_str());
+
+            ImGui::SeparatorText("Available Assets");
+
+            static int count = 0;
+            for(const auto& asset : data.assets) {
+                ImGui::TextColored({0.8549f, 0.4392f, 0.1725f, 1.0f}, "Asset: %i", count);
+                ImGui::Text("%s", asset.assetName.c_str());
+                ImGui::Text("%s", asset.uploader.c_str());
+                ImGui::Text("%s", asset.downloadUrl.c_str());
+
+                ImGui::Spacing();
+
+                const std::string btnStr{"Download: " + asset.assetName};
+                if(ImGui::Button(btnStr.c_str())) {
+                    m_downloadFuture = std::async(std::launch::async, &ModManager::Download, m_modManager, asset.downloadUrl, m_downloadDest / asset.assetName);
+                }
+
+                ImGui::Separator();
+                ImGui::Spacing();
+                ImGui::Spacing();
+
+                count++;
+            }
+            count = 0;
+
+            float availHeight = ImGui::GetContentRegionAvail().y;
+            float buttonsHeight = ImGui::GetFrameHeightWithSpacing();
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + availHeight - buttonsHeight);
+
             int sel = selected;
             if(ImGui::Button("Retrieve release data")) {
                 m_futures[sel] = std::async(std::launch::async, [this, sel]() {
                     return m_modManager->GetReleaseData(m_modManager->m_trackedMods[static_cast<size_t>(sel)]);
                 });
             }
-
-            ImGui::Text("Mod Author: %s", data.uploader.c_str());
-            ImGui::Text("Mod Name: %s", data.modName.c_str());
-            ImGui::Text("Download URL: %s", data.downloadUrl.c_str());
-
-            const std::string btnStr{"Download " + data.modName};
-            if(ImGui::Button(btnStr.c_str())) {
-                m_downloadFuture = std::async(std::launch::async, &ModManager::Download, m_modManager, data.downloadUrl, fs::current_path() / data.modName);
-            }
+            ImGui::SameLine();
         }
 
         ImGui::EndChild();

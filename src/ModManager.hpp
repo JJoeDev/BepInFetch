@@ -11,10 +11,17 @@
 
 namespace fs = std::filesystem;
 
-struct modData {
+struct Asset {
     std::string uploader;
-    std::string modName;
+    std::string assetName;
     std::string downloadUrl;
+};
+
+struct ModData {
+    std::string modName;
+    std::string tagName;
+    std::string publishTime;
+    std::vector<Asset> assets;
 };
 
 class ModManager {
@@ -31,7 +38,7 @@ public:
     }
 
     [[nodiscard]]
-    modData GetReleaseData(const std::string& repo) const;
+    ModData GetReleaseData(const std::string& repo) const;
 
     void Download(const std::string& file, fs::path destination);
 

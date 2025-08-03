@@ -1,4 +1,4 @@
-BepInFetch
+BepInFetch : https://www.perplexity.ai/search/i-have-this-cmakelists-txt-her-6JJbycsRSZ2YEj.37DRJ8A
 
 A C++ 20 application for managing BepInEx mods for Unity games
 
@@ -38,12 +38,13 @@ the internet. [nlohmann::json](https://github.com/nlohmann/json) is used for par
 > [!WARNING]
 >
 > **Platform support notice:** Currently, BepInFetch only supports 64-bit Microsoft Windows systems.
-Building and running on Unix-like platforms such as Linux or MacOS is not supported due to platform specific dependencies such as OpenGL 4.4.
+Building and running on Unix-like platforms such as Linux or MacOS is not supported due to platform specific dependencies such as OpenGL 4.4
+& OpenSSL for Windows 64-bit
 
 ### Prerequisites
 - CMake (version 3.26 or newer)
 - C++ 20 capable compilerfor Windows (MSVC, clang, gcc)
-- OpenSSL (Download Windows 64-bit non "lite" version: https://slproweb.com/products/Win32OpenSSL.html)
+- OpenSSL (vcpkg install openssl:x64-windows-static)
 - - (Optionally) A build system like Ninja
 
 **Step 1** Cloning the repository including submodules for dependencies like [Dear ImGui](https://github.com/ocornut/imgui)
@@ -55,7 +56,7 @@ Building and running on Unix-like platforms such as Linux or MacOS is not suppor
 
 - Using CMake and the auto detected compiler
 ```
-  $ cmake .
+  $ cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DOPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows-static .
   $ cmake --build .
 ```
 - Using `.\build.bat` this requires the Ninja build system in order to work

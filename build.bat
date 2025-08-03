@@ -10,7 +10,7 @@ if not "%1"=="" (
 	if /i "%1"=="release" set BUILD_TYPE=-DCMAKE_BUILD_TYPE=Release
 )
 
-cmake -G Ninja %BUILD_TYPE% .
+cmake -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DOPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows-static .
 if errorlevel 1 (
 	echo CMake configuration failed!
 	exit /b 1

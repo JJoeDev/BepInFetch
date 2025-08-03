@@ -6,10 +6,16 @@
 #include <future>
 #include <string>
 
+#include "imgui.h"
+#include "imfilebrowser.h"
+
 class Gui {
 public:
     explicit Gui(GLFWwindow* window, const char* glslVersion, ModManager* manager);
     ~Gui();
+
+    /// For stuff that can't be initialized in the constructor
+    void PostInit();
 
     void Render();
 
@@ -19,12 +25,16 @@ private:
 
     int m_rootWinFlags{};
 
+    ImGui::FileBrowser m_fileBrowser{ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory | ImGuiFileBrowserFlags_HideRegularFiles};
+
     std::string m_enteredUrl{};
 
-    std::unordered_map<int, modData> m_retrievedData{};
-    std::unordered_map<int, std::future<modData>> m_futures{};
+    std::unordered_map<int, ModData> m_retrievedData{};
+    std::unordered_map<int, std::future<ModData>> m_futures{};
     std::future<void> m_downloadFuture{};
     bool m_retrivingData{false};
+
+    fs::path m_downloadDest{};
 
     // File Menu Items
     bool m_showAbout{false};
