@@ -1,4 +1,4 @@
-BepInFetch : https://www.perplexity.ai/search/i-have-this-cmakelists-txt-her-6JJbycsRSZ2YEj.37DRJ8A
+BepInFetch
 
 A C++ 20 application for managing BepInEx mods for Unity games
 
