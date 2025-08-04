@@ -1,5 +1,6 @@
 #include "Gui.hpp"
 #include "Application.hpp"
+#include "ConfigManager.hpp"
 #include "ModManager.hpp"
 #include "StaticInterface.hpp"
 #include "Theme.hpp"
@@ -16,6 +17,7 @@
 #include <filesystem>
 #include <future>
 #include <string>
+#include <unordered_map>
 
 Gui::Gui(GLFWwindow* window, const char* glslVersion, ModManager* manager) : m_window(window), m_modManager(manager) {
     IMGUI_CHECKVERSION();
@@ -43,24 +45,35 @@ Gui::Gui(GLFWwindow* window, const char* glslVersion, ModManager* manager) : m_w
     });
 
     m_fileBrowser.SetTitle("Select file destination");
+
+    ReadData();
 }
 
 Gui::~Gui() {
+    SaveData();
+
+    m_modManager = nullptr;
+    m_window = nullptr;
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 }
 
 void Gui::PostInit() {
-    if(const auto path = GlobalInstance<Application>::instance->GetDownloadPath(); path.empty()) {
-        m_downloadDest = fs::current_path();
+    const auto app = GlobalInstance<Application>::instance;
+
+    if(const auto path = app->GetDownloadPath(); path.empty()) {
+        app->SetDownloadPath(fs::current_path());
     }
     else {
-        m_downloadDest = path;
+        app->SetDownloadPath(path);
     }
 }
 
 void Gui::Render() {
+    const auto app = GlobalInstance<Application>::instance;
+
     if(m_downloadFuture.valid() && m_downloadFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         m_downloadFuture.get();
     }
@@ -112,7 +125,7 @@ void Gui::Render() {
     ImGui::SameLine();
     if(ImGui::Button("Track") || isEnter) {
         if(!m_enteredUrl.empty()) {
-            m_modManager->m_trackedMods.push_back(m_enteredUrl);
+            m_trackedMods.push_back(m_enteredUrl);
             m_enteredUrl = "";
         }
     }
@@ -121,12 +134,12 @@ void Gui::Render() {
         m_fileBrowser.Open();
     }
     ImGui::SameLine();
-    ImGui::Text("Mod Download Destination: %ls", m_downloadDest.c_str());
+    ImGui::Text("Mod Download Destination: %ls", app->GetDownloadPath().c_str());
 
     m_fileBrowser.Display();
 
     if(m_fileBrowser.HasSelected()) {
-        m_downloadDest = m_fileBrowser.GetSelected();
+        app->SetDownloadPath(m_fileBrowser.GetSelected());
         m_fileBrowser.ClearSelected();
     }
 
@@ -135,20 +148,37 @@ void Gui::Render() {
         ImGui::BeginGroup();
         ImGui::BeginChild("Mod List", {350, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
 
-        if(m_modManager->m_trackedMods.size() > 0) {
-            for(size_t i = 0; i < m_modManager->m_trackedMods.size(); ++i) {
-                if(ImGui::Selectable(m_modManager->m_trackedMods[i].c_str(), selected == static_cast<int>(i))) {
+        if(m_trackedMods.size() > 0) {
+            for(size_t i = 0; i < m_trackedMods.size(); ++i) {
+                if(ImGui::Selectable(m_trackedMods[i].c_str(), selected == static_cast<int>(i))) {
                     selected = static_cast<int>(i);
                 }
             }
         }
 
         ImGui::EndChild();
-        if(m_modManager->m_trackedMods.size() > 0) {
+        if(m_trackedMods.size() > 0) {
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.686274509804f, 0.188235294118f, 0.160784313725f, 1.0f}); // Flexoki red 600
             if(ImGui::Button("Remove Selected")) {
-                auto& mods = m_modManager->m_trackedMods;
-                mods.erase(std::find(mods.begin(), mods.end(), mods[static_cast<size_t>(selected)]));
+                int idx = static_cast<int>(selected);
+
+                // Remove mod name from vector and data from unordered_map
+                m_trackedMods.erase(m_trackedMods.begin() + idx);
+                m_retrievedData.erase(idx);
+
+                // Shift all data in unordered_map after idx to keep keys aligned with mod name vector
+                std::unordered_map<int, ModData> newMap;
+                for(const auto& [key, modData] : m_retrievedData) {
+                    if(key > idx) {
+                        newMap[key - 1] = modData;
+                    }
+                    else if(key < idx) {
+                        newMap[key] = modData;
+                    }
+                }
+
+                m_retrievedData = std::move(newMap);
+               
             }
             ImGui::PopStyleColor();
         }
@@ -160,7 +190,7 @@ void Gui::Render() {
         ImGui::BeginGroup();
         ImGui::BeginChild("Mod View", {0, -ImGui::GetFrameHeightWithSpacing()}, ImGuiChildFlags_Borders);
 
-        if(m_modManager->m_trackedMods.size() > 0) {
+        if(m_trackedMods.size() > 0) {
             const auto& data = m_retrievedData[selected];
 
             ImGui::Text("Mod Name: %s", data.modName.c_str());
@@ -180,7 +210,7 @@ void Gui::Render() {
 
                 const std::string btnStr{"Download: " + asset.assetName};
                 if(ImGui::Button(btnStr.c_str())) {
-                    m_downloadFuture = std::async(std::launch::async, &ModManager::Download, m_modManager, asset.downloadUrl, m_downloadDest / asset.assetName);
+                    m_downloadFuture = std::async(std::launch::async, &ModManager::Download, m_modManager, asset.downloadUrl, app->GetDownloadPath() / asset.assetName);
                 }
 
                 ImGui::Separator();
@@ -198,7 +228,7 @@ void Gui::Render() {
             int sel = selected;
             if(ImGui::Button("Retrieve release data")) {
                 m_futures[sel] = std::async(std::launch::async, [this, sel]() {
-                    return m_modManager->GetReleaseData(m_modManager->m_trackedMods[static_cast<size_t>(sel)]);
+                    return m_modManager->GetReleaseData(m_trackedMods[static_cast<size_t>(sel)]);
                 });
             }
             ImGui::SameLine();
@@ -254,4 +284,24 @@ void Gui::Render() {
 #endif
 
     ImGui::End();
+}
+
+// PRIVATE FUNCTIONS
+
+void Gui::SaveData() {
+    auto& cfg = GlobalInstance<ConfigManager>::instance;
+
+    nlohmann::json j;
+    j["trackedMods"] = m_trackedMods;
+    j["retrievedData"] = m_retrievedData;
+
+    GlobalInstance<ConfigManager>::instance->WriteJson(j, "MOD_DATA.json");
+}
+
+void Gui::ReadData() {
+    nlohmann::json j;
+    if(GlobalInstance<ConfigManager>::instance->ReadJson(j, "MOD_DATA.json")) {
+        m_trackedMods = j.at("trackedMods").get<std::vector<std::string>>();
+        m_retrievedData = j.at("retrievedData").get<std::unordered_map<int, ModData>>();
+    }
 }

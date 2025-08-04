@@ -22,10 +22,21 @@ Application::Application(const AppSpecs& specs) {
 
     m_gui = std::make_unique<Gui>(m_window, m_GLSL_VERSION, &m_modManager);
 
+    // Read app settings
+    nlohmann::json j;
+    if(GlobalInstance<ConfigManager>::instance->ReadJson(j, "APP_SETTINGS.json")) {
+        m_downloadDest = j.at("downloadPath").get<fs::path>();
+    }
+
     GlobalInstance<Application>::instance = this;
 }
 
 Application::~Application() {
+    nlohmann::json j;
+    j["downloadPath"] = m_downloadDest;
+
+    GlobalInstance<ConfigManager>::instance->WriteJson(j, "APP_SETTINGS.json");
+
     m_gui.reset();
 
     glfwDestroyWindow(m_window);
