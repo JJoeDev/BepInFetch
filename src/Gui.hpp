@@ -19,6 +19,9 @@ public:
 
     void Render();
 
+    [[nodiscard]]
+    const inline std::unordered_map<int, ModData> GetModData() { return m_retrievedData; }
+
 private:
     GLFWwindow* m_window{nullptr}; // Cannot be made const
     ModManager* m_modManager{nullptr};
@@ -29,12 +32,11 @@ private:
 
     std::string m_enteredUrl{};
 
+    std::vector<std::string> m_trackedMods{};
     std::unordered_map<int, ModData> m_retrievedData{};
     std::unordered_map<int, std::future<ModData>> m_futures{};
     std::future<void> m_downloadFuture{};
     bool m_retrivingData{false};
-
-    fs::path m_downloadDest{};
 
     // File Menu Items
     bool m_showAbout{false};
@@ -43,4 +45,7 @@ private:
 
     // Help Menu Items
     bool m_showHelp{false};
+
+    void SaveData();
+    void ReadData();
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConfigManager.hpp"
 #include "Gui.hpp"
 #include "ModManager.hpp"
 
@@ -24,13 +25,17 @@ public:
     const inline fs::path& GetDownloadPath() const { return m_downloadDest; }
     inline void SetDownloadPath(const fs::path& path) { m_downloadDest = path; }
 
+    [[nodiscard]]
+    const inline ConfigManager& GetCfgManager();
+
 private:
     GLFWwindow* m_window{nullptr};
 
     std::unique_ptr<Gui> m_gui{nullptr};
     ModManager m_modManager{};
+    ConfigManager m_configManager{};
 
-    fs::path m_downloadDest{"C:\\dev"};
+    fs::path m_downloadDest{};
 
     const char* m_GLSL_VERSION{"#version 440"};
 };
